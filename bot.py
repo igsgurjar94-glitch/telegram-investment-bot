@@ -10,7 +10,7 @@ from telegram.ext import Application, CommandHandler, CallbackQueryHandler, Mess
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 
 if not BOT_TOKEN:
-    print("❌ ERROR: BOT_TOKEN not found!")
+    print("ERROR: BOT_TOKEN not found!")
     exit(1)
 
 ADMIN_IDS = [8473800312]  # 🔑 APNI ID YAHAN DALEIN!
@@ -75,7 +75,7 @@ def create_user(user_id, username, first_name):
 
 # ==================== PLANS ====================
 PLANS = {
-    "basic": {"name": "Basic", "min": 500, "max": 1000, "daily": 2},
+    "basic": {"name": "Basic", "min": 500, "max": 999, "daily": 2},
     "silver": {"name": "Silver", "min": 2000, "max": 5000, "daily": 2.5},
     "gold": {"name": "Gold", "min": 10000, "max": 25000, "daily": 3},
     "platinum": {"name": "Platinum", "min": 50000, "max": 100000, "daily": 4}
@@ -90,7 +90,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     balance = user_data.get('balance', 0)
     
     text = f"""
-🏦 **WELCOME {user.first_name}!**
+🏦 WELCOME {user.first_name}!
 
 💰 Balance: ₹{balance}
 
@@ -121,7 +121,7 @@ async def back(update: Update, context: ContextTypes.DEFAULT_TYPE):
     balance = user_data.get('balance', 0)
     
     text = f"""
-🏦 **MAIN MENU**
+🏦 MAIN MENU
 
 💰 Balance: ₹{balance}
 
@@ -148,7 +148,7 @@ async def invest(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.answer()
     
     text = """
-💰 **INVESTMENT PLANS**
+💰 INVESTMENT PLANS
 
 | Plan | Min | Daily % |
 |------|-----|---------|
@@ -157,8 +157,8 @@ async def invest(update: Update, context: ContextTypes.DEFAULT_TYPE):
 | Gold | ₹10,000 | 3% |
 | Platinum | ₹50,000 | 4% |
 
-📌 `/invest [plan] [amount]`
-Example: `/invest basic 500`
+📌 /invest [plan] [amount]
+Example: /invest basic 500
 """
     
     keyboard = [
@@ -179,17 +179,17 @@ async def invest_plan(update: Update, context: ContextTypes.DEFAULT_TYPE):
     plan = PLANS.get(plan_name)
     
     if not plan:
-        await query.edit_message_text("❌ Invalid plan!")
+        await query.edit_message_text("Invalid plan!")
         return
     
     text = f"""
-📊 **{plan['name']} PLAN**
+📊 {plan['name']} PLAN
 
 💰 Min: ₹{plan['min']}
 💰 Max: ₹{plan['max']}
 📈 Daily: {plan['daily']}%
 
-📌 `/invest {plan_name} [amount]`
+📌 /invest {plan_name} [amount]
 """
     
     await query.edit_message_text(text, parse_mode='Markdown', reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Back", callback_data="invest")]]))
@@ -198,23 +198,23 @@ async def invest_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     
     if len(context.args) < 2:
-        await update.message.reply_text("❌ Usage: `/invest [plan] [amount]`")
+        await update.message.reply_text("Usage: /invest [plan] [amount]")
         return
     
     plan_name = context.args[0].lower()
     try:
         amount = int(context.args[1])
     except:
-        await update.message.reply_text("❌ Enter valid amount!")
+        await update.message.reply_text("Enter valid amount!")
         return
     
     plan = PLANS.get(plan_name)
     if not plan:
-        await update.message.reply_text("❌ Invalid plan!")
+        await update.message.reply_text("Invalid plan!")
         return
     
     if amount < plan['min'] or amount > plan['max']:
-        await update.message.reply_text(f"❌ Amount must be ₹{plan['min']}-₹{plan['max']}")
+        await update.message.reply_text(f"Amount must be ₹{plan['min']}-₹{plan['max']}")
         return
     
     daily_return = (amount * plan['daily']) / 100
@@ -229,7 +229,7 @@ async def invest_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     })
     
     await update.message.reply_text(
-        f"✅ **Investment Successful!**\n\n"
+        f"✅ Investment Successful!\n\n"
         f"Plan: {plan['name']}\n"
         f"Amount: ₹{amount}\n"
         f"Daily: ₹{daily_return:.0f}",
@@ -245,17 +245,17 @@ async def daily_reward(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_data = get_user(user_id)
     
     if user_data.get('plan') == 'none':
-        await query.edit_message_text("❌ No active investment!", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Back", callback_data="back")]]))
+        await query.edit_message_text("No active investment!", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Back", callback_data="back")]]))
         return
     
     today = str(datetime.now().date())
     if user_data.get('last_claim') == today:
-        await query.edit_message_text("❌ Already claimed today!", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Back", callback_data="back")]]))
+        await query.edit_message_text("Already claimed today!", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Back", callback_data="back")]]))
         return
     
     reward = int(user_data.get('daily_reward', 0))
     if reward == 0:
-        await query.edit_message_text("❌ No reward available!", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Back", callback_data="back")]]))
+        await query.edit_message_text("No reward available!", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Back", callback_data="back")]]))
         return
     
     balance = user_data.get('balance', 0)
@@ -268,7 +268,7 @@ async def daily_reward(update: Update, context: ContextTypes.DEFAULT_TYPE):
     })
     
     await query.edit_message_text(
-        f"🎁 **Daily Reward!**\n\n"
+        f"🎁 Daily Reward!\n\n"
         f"💰 Amount: ₹{reward}\n"
         f"💎 New Balance: ₹{balance + reward}\n"
         f"📅 Day: {days}",
@@ -285,17 +285,17 @@ async def game(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_data = get_user(user_id)
     
     if user_data.get('balance', 0) < 50:
-        await query.edit_message_text("❌ Need ₹50 to play!", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Back", callback_data="back")]]))
+        await query.edit_message_text("Need ₹50 to play!", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Back", callback_data="back")]]))
         return
     
     context.user_data['game_active'] = True
     context.user_data['secret_number'] = random.randint(1, 10)
     
     await query.edit_message_text(
-        "🎮 **Lucky Number Game**\n\n"
+        "🎮 Lucky Number Game\n\n"
         "💰 Entry: ₹50\n"
         "🎯 Win: ₹100\n\n"
-        "**Type a number (1-10):**",
+        "Type a number (1-10):",
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("❌ Cancel", callback_data="cancel_game")]])
     )
@@ -304,7 +304,7 @@ async def cancel_game(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
     context.user_data['game_active'] = False
-    await query.edit_message_text("✅ Game cancelled!", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Back", callback_data="back")]]))
+    await query.edit_message_text("Game cancelled!", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Back", callback_data="back")]]))
 
 async def handle_game(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
@@ -315,11 +315,11 @@ async def handle_game(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         guess = int(update.message.text)
     except:
-        await update.message.reply_text("❌ Send a number!")
+        await update.message.reply_text("Send a number!")
         return
     
     if guess < 1 or guess > 10:
-        await update.message.reply_text("❌ Number must be 1-10!")
+        await update.message.reply_text("Number must be 1-10!")
         return
     
     secret = context.user_data.get('secret_number')
@@ -335,7 +335,7 @@ async def handle_game(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "games_won": user_data.get('games_won', 0) + 1
         })
         await update.message.reply_text(
-            f"🎉 **YOU WON!**\n\n"
+            f"🎉 YOU WON!\n\n"
             f"Guess: {guess}\n"
             f"Secret: {secret}\n"
             f"💰 Won: ₹{win}\n"
@@ -349,7 +349,7 @@ async def handle_game(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "games_played": user_data.get('games_played', 0) + 1
         })
         await update.message.reply_text(
-            f"❌ **YOU LOST!**\n\n"
+            f"❌ YOU LOST!\n\n"
             f"Guess: {guess}\n"
             f"Secret: {secret}\n"
             f"💎 Balance: ₹{new_balance}",
@@ -367,7 +367,7 @@ async def wallet(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_data = get_user(user_id)
     
     text = f"""
-📊 **MY WALLET**
+📊 MY WALLET
 
 💰 Balance: ₹{user_data.get('balance', 0)}
 💎 Invested: ₹{user_data.get('invested', 0)}
@@ -388,12 +388,12 @@ async def refer(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     
     text = f"""
-👥 **REFER & EARN**
+👥 REFER & EARN
 
 💰 ₹50 per referral!
 
 📤 Your Link:
-`https://t.me/{context.bot.username}?start=ref_{user_id}`
+https://t.me/{context.bot.username}?start=ref_{user_id}
 """
     
     await query.edit_message_text(text, parse_mode='Markdown', reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Back", callback_data="back")]]))
@@ -408,15 +408,15 @@ async def withdraw(update: Update, context: ContextTypes.DEFAULT_TYPE):
     balance = user_data.get('balance', 0)
     
     if balance < 100:
-        await query.edit_message_text(f"❌ Min ₹100! Balance: ₹{balance}", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Back", callback_data="back")]]))
+        await query.edit_message_text(f"Min ₹100! Balance: ₹{balance}", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Back", callback_data="back")]]))
         return
     
     await query.edit_message_text(
-        f"🏦 **WITHDRAWAL**\n\n"
+        f"🏦 WITHDRAWAL\n\n"
         f"Balance: ₹{balance}\n"
         f"Min: ₹100\n"
         f"Max: ₹500\n\n"
-        f"📌 `/withdraw [amount]`",
+        f"📌 /withdraw [amount]",
         parse_mode='Markdown'
     )
 
@@ -424,26 +424,26 @@ async def withdraw_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     
     if len(context.args) < 1:
-        await update.message.reply_text("❌ Usage: `/withdraw [amount]`")
+        await update.message.reply_text("Usage: /withdraw [amount]")
         return
     
     try:
         amount = int(context.args[0])
     except:
-        await update.message.reply_text("❌ Enter valid amount!")
+        await update.message.reply_text("Enter valid amount!")
         return
     
     user_data = get_user(user_id)
     balance = user_data.get('balance', 0)
     
     if amount < 100:
-        await update.message.reply_text("❌ Min ₹100!")
+        await update.message.reply_text("Min ₹100!")
         return
     if amount > 500:
-        await update.message.reply_text("❌ Max ₹500!")
+        await update.message.reply_text("Max ₹500!")
         return
     if amount > balance:
-        await update.message.reply_text(f"❌ Insufficient! You have ₹{balance}")
+        await update.message.reply_text(f"Insufficient! You have ₹{balance}")
         return
     
     net = amount - 10
@@ -453,7 +453,7 @@ async def withdraw_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     })
     
     await update.message.reply_text(
-        f"✅ **Withdrawal Request Sent!**\n\n"
+        f"✅ Withdrawal Request Sent!\n\n"
         f"Amount: ₹{amount}\n"
         f"Fee: ₹10\n"
         f"Net: ₹{net}\n"
@@ -469,17 +469,17 @@ async def admin(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     
     if user_id not in ADMIN_IDS:
-        await query.edit_message_text("❌ Access Denied!")
+        await query.edit_message_text("Access Denied!")
         return
     
     users = load_json("users.json")
     total = len(users)
     
     text = f"""
-⚙️ **ADMIN PANEL**
+⚙️ ADMIN PANEL
 
 👥 Users: {total}
-💰 Total Invested: ₹{sum(u.get('invested', 0) for u in users.values())}
+💰 Invested: ₹{sum(u.get('invested', 0) for u in users.values())}
 
 📌 Commands:
 /stats - Stats
@@ -505,7 +505,7 @@ async def admin_users(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     
     if user_id not in ADMIN_IDS:
-        await query.edit_message_text("❌ Access Denied!")
+        await query.edit_message_text("Access Denied!")
         return
     
     users = load_json("users.json")
@@ -522,10 +522,10 @@ async def admin_broadcast(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     
     if user_id not in ADMIN_IDS:
-        await query.edit_message_text("❌ Access Denied!")
+        await query.edit_message_text("Access Denied!")
         return
     
-    await query.edit_message_text("📢 Send: `/broadcast [message]`", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Back", callback_data="admin")]]))
+    await query.edit_message_text("Send: /broadcast [message]", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Back", callback_data="admin")]]))
 
 async def admin_pending(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -534,14 +534,14 @@ async def admin_pending(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     
     if user_id not in ADMIN_IDS:
-        await query.edit_message_text("❌ Access Denied!")
+        await query.edit_message_text("Access Denied!")
         return
     
     wds = load_json("withdrawals.json")
     pending = {k: v for k, v in wds.items() if v.get('status') == 'pending'}
     
     if not pending:
-        text = "✅ No pending withdrawals!"
+        text = "No pending withdrawals!"
     else:
         text = f"⏳ PENDING ({len(pending)})\n\n"
         for wid, data in list(pending.items()):
@@ -558,11 +558,11 @@ async def broadcast_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     
     if user_id not in ADMIN_IDS:
-        await update.message.reply_text("❌ Not admin!")
+        await update.message.reply_text("Not admin!")
         return
     
     if len(context.args) < 1:
-        await update.message.reply_text("❌ Usage: `/broadcast [message]`")
+        await update.message.reply_text("Usage: /broadcast [message]")
         return
     
     msg = ' '.join(context.args)
@@ -576,40 +576,43 @@ async def broadcast_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         except:
             pass
     
-    await update.message.reply_text(f"✅ Broadcast sent to {sent} users!")
+    await update.message.reply_text(f"Broadcast sent to {sent} users!")
 
 async def approve_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     
     if user_id not in ADMIN_IDS:
-        await update.message.reply_text("❌ Not admin!")
+        await update.message.reply_text("Not admin!")
         return
     
     if len(context.args) < 1:
-        await update.message.reply_text("❌ Usage: `/approve [wd_id]`")
+        await update.message.reply_text("Usage: /approve [wd_id]")
         return
     
     wid = context.args[0]
     wds = load_json("withdrawals.json")
     
     if wid not in wds:
-        await update.message.reply_text("❌ Not found!")
+        await update.message.reply_text("Not found!")
         return
     
     wds[wid]['status'] = 'approved'
     save_json("withdrawals.json", wds)
     
-    await update.message.reply_text(f"✅ Withdrawal approved!")
+    await update.message.reply_text(f"Withdrawal approved!")
 
 async def stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     
     if user_id not in ADMIN_IDS:
-        await update.message.reply_text("❌ Not admin!")
+        await update.message.reply_text("Not admin!")
         return
     
     users = load_json("users.json")
     await update.message.reply_text(f"📊 Users: {len(users)}\n💰 Invested: ₹{sum(u.get('invested', 0) for u in users.values())}")
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("/st
+    await update.message.reply_text("/start - Main Menu\n/invest - Invest\n/withdraw - Withdraw")
+
+# ==================== ERROR ====================
+async def error_handler(update: Update, cont
