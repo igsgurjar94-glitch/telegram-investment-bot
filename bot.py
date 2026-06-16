@@ -2,7 +2,7 @@ import os
 import json
 import logging
 from datetime import datetime
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, InputMediaPhoto
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ContextTypes
 
 # ==================== CONFIG ====================
@@ -45,18 +45,18 @@ def add_user(user_id, username, first_name):
         return True
     return False
 
-# ==================== WELCOME MESSAGE ====================
+# ==================== WELCOME MESSAGE (BOLD) ====================
 WELCOME_MESSAGE = """
-🚀 **WELCOME TO [YOUR COMPANY NAME]** 🚀
+**🚀 WELCOME TO [SHREE GANESH BAZAR]** 🚀
 
-💰 **Earn Money Online With Us!** 💰
+**💰 Earn Money Online With Us!** 💰
 
-Namaste! 🙏 Aapka swagat hai!
+**Namaste!** 🙏 Aapka swagat hai!
 
-✅ 100% Secure & Trusted
-📈 Minimum Investment: ₹500/-
-💵 Daily Returns: 10% - 30%
-🏆 Referral Bonus: 5%
+✅ **100% Secure & Trusted**
+📈 **Minimum Investment:** ₹500/-
+💵 **Daily Returns:** 10% - 30%
+🏆 **Referral Bonus:** 5%
 
 🔽 **Options mein se choose karein:** 🔽
 """
@@ -67,7 +67,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     add_user(user.id, user.username, user.first_name)
     
     welcome = f"""
-👋 **Namaste {user.first_name}!** 👋
+**👋 Namaste {user.first_name}!** 👋
 
 {WELCOME_MESSAGE}
 """
@@ -87,7 +87,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     reply_markup = InlineKeyboardMarkup(keyboard)
     
     # 📸 IMAGE SEND KAREIN PEHLE
-    image_url = "https://postimg.cc/5Hz1fnwV"  # ⚠️ YAHAN APNI IMAGE URL DALEIN!
+    image_url = "https://example.com/your-image.jpg"  # ⚠️ YAHAN APNI IMAGE URL DALEIN!
     
     try:
         await update.message.reply_photo(
@@ -115,16 +115,16 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # ===== PROOF CHANNEL =====
     if data == "proof":
         text = """
-📢 **PROOF CHANNEL** 📢
+**📢 PROOF CHANNEL** 📢
 
-✅ Hamare real payment proofs:
+✅ **Hamare real payment proofs:**
 
-🔹 Channel: [@your_proof_channel](https://t.me/your_proof_channel)
-🔹 500+ Satisfied Investors
-🔹 Daily Payouts
+🔹 **Channel:** [@your_proof_channel](https://t.me/your_proof_channel)
+🔹 **500+ Satisfied Investors**
+🔹 **Daily Payouts**
 
 👇 **Join karein:**
-👉 [@your_proof_channel](https://t.me/your_proof_channel)
+👉 **[@your_proof_channel](https://t.me/your_proof_channel)**
 """
         keyboard = [
             [InlineKeyboardButton("🔙 Back", callback_data="back")],
@@ -140,11 +140,11 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # ===== CONTACT SUPPORT =====
     elif data == "support":
         text = """
-📞 **CONTACT SUPPORT** 📞
+**📞 CONTACT SUPPORT** 📞
 
-👤 Admin: [@your_admin](https://t.me/your_admin)
-📧 Email: support@yourcompany.com
-💬 WhatsApp: +91-XXXXXXXXXX
+👤 **Admin:** [@your_admin](https://t.me/your_admin)
+📧 **Email:** support@yourcompany.com
+💬 **WhatsApp:** +91-XXXXXXXXXX
 
 📌 **24/7 Available**
 """
@@ -161,38 +161,38 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # ===== INVESTMENT PLANS =====
     elif data == "plans":
         text = """
-📊 **INVESTMENT PLANS** 📊
+**📊 INVESTMENT PLANS** 📊
 
-┌─────────────────────────────┐
-│ 🥇 BASIC PLAN               │
-│ 💵 ₹500 - ₹5,000            │
-│ 📈 10% Daily Returns        │
-│ ⏳ 30 Days                  │
-└─────────────────────────────┘
+**┌─────────────────────────────┐**
+**│ 🥇 BASIC PLAN               │**
+**│ 💵 ₹500 - ₹5,000            │**
+**│ 📈 10% Daily Returns        │**
+**│ ⏳ 30 Days                  │**
+**└─────────────────────────────┘**
 
-┌─────────────────────────────┐
-│ 🥈 SILVER PLAN              │
-│ 💵 ₹5,001 - ₹25,000         │
-│ 📈 15% Daily Returns        │
-│ ⏳ 30 Days                  │
-└─────────────────────────────┘
+**┌─────────────────────────────┐**
+**│ 🥈 SILVER PLAN              │**
+**│ 💵 ₹5,001 - ₹25,000         │**
+**│ 📈 15% Daily Returns        │**
+**│ ⏳ 30 Days                  │**
+**└─────────────────────────────┘**
 
-┌─────────────────────────────┐
-│ 🥇 GOLD PLAN                │
-│ 💵 ₹25,001 - ₹1L            │
-│ 📈 20% Daily Returns        │
-│ ⏳ 30 Days                  │
-└─────────────────────────────┘
+**┌─────────────────────────────┐**
+**│ 🥇 GOLD PLAN                │**
+**│ 💵 ₹25,001 - ₹1L            │**
+**│ 📈 20% Daily Returns        │**
+**│ ⏳ 30 Days                  │**
+**└─────────────────────────────┘**
 
-┌─────────────────────────────┐
-│ 👑 PLATINUM PLAN            │
-│ 💵 ₹1L+                     │
-│ 📈 30% Daily Returns        │
-│ ⏳ 30 Days                  │
-└─────────────────────────────┘
+**┌─────────────────────────────┐**
+**│ 👑 PLATINUM PLAN            │**
+**│ 💵 ₹1L+                     │**
+**│ 📈 30% Daily Returns        │**
+**│ ⏳ 30 Days                  │**
+**└─────────────────────────────┘**
 
-📌 Minimum: ₹500 only!
-✅ Instant Withdrawal
+📌 **Minimum:** ₹500 only!
+✅ **Instant Withdrawal**
 """
         keyboard = [
             [InlineKeyboardButton("🔙 Back", callback_data="back")],
@@ -207,19 +207,19 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # ===== INVEST NOW =====
     elif data == "invest":
         text = """
-💰 **INVEST NOW** 💰
+**💰 INVEST NOW** 💰
 
-Apna investment plan select karein:
+**Apna investment plan select karein:**
 
-1️⃣ Basic Plan - ₹500
-2️⃣ Silver Plan - ₹5,000
-3️⃣ Gold Plan - ₹25,000
-4️⃣ Platinum Plan - ₹1,00,000
+**1️⃣ Basic Plan - ₹500**
+**2️⃣ Silver Plan - ₹5,000**
+**3️⃣ Gold Plan - ₹25,000**
+**4️⃣ Platinum Plan - ₹1,00,000**
 
 📌 **Steps:**
-1. Support se contact karein
-2. Payment karein (UPI/Bank)
-3. Investment confirm ho jayega
+**1.** Support se contact karein
+**2.** Payment karein (UPI/Bank)
+**3.** Investment confirm ho jayega
 
 👇 **Support se baat karein:**
 """
@@ -236,19 +236,19 @@ Apna investment plan select karein:
     # ===== HELP / FAQ =====
     elif data == "help":
         text = """
-❓ **HELP / FAQ** ❓
+**❓ HELP / FAQ** ❓
 
 **Q: Minimum investment?**
-A: ₹500/-
+**A:** ₹500/-
 
 **Q: Returns kaise milte hain?**
-A: Daily aapke wallet mein
+**A:** Daily aapke wallet mein
 
 **Q: Withdrawal kaise karein?**
-A: Support se contact karein
+**A:** Support se contact karein
 
 **Q: Kya ye safe hai?**
-A: 100% Secure platform
+**A:** 100% Secure platform
 
 📌 **Still have questions?**
 Contact support 👇
@@ -266,7 +266,7 @@ Contact support 👇
     # ===== BACK TO MAIN MENU =====
     elif data == "back":
         welcome = f"""
-👋 **Namaste {user.first_name}!** 👋
+**👋 Namaste {user.first_name}!** 👋
 
 {WELCOME_MESSAGE}
 """
@@ -302,11 +302,11 @@ Contact support 👇
 # ==================== HELP COMMAND ====================
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = """
-📚 **Commands:**
+**📚 Commands:**
 
-/start - Main menu
-/help - Help
-/status - Bot status
+**/start** - Main menu
+**/help** - Help
+**/status** - Bot status
 """
     keyboard = [
         [InlineKeyboardButton("📢 Proof", callback_data="proof")],
@@ -323,10 +323,10 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def status_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     users = load_users()
     text = f"""
-🤖 **Bot Status**
+**🤖 Bot Status**
 
-👥 Total Users: {len(users)}
-✅ Status: Online
+**👥 Total Users:** {len(users)}
+**✅ Status:** Online
 
 ⚡️ Bot is working perfectly!
 """
@@ -338,7 +338,7 @@ async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # ==================== MAIN ====================
 def main():
-    print("🤖 Starting Investment Bot with Image...")
+    print("🤖 Starting Investment Bot with Image & Bold Text...")
     print(f"✅ Bot Token: {'Found ✅' if BOT_TOKEN else 'Not Found ❌'}")
     
     app = Application.builder().token(BOT_TOKEN).build()
