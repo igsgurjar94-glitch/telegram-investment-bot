@@ -22,29 +22,21 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # ==================== DATA FILES ====================
-# Railway par files create karein
 for file in ["users.json", "withdrawals.json"]:
     if not os.path.exists(file):
         with open(file, 'w') as f:
             json.dump({}, f)
-        print(f"Created {file}")
 
 def load_json(file):
     try:
         with open(file, 'r') as f:
             return json.load(f)
-    except Exception as e:
-        print(f"Error loading {file}: {e}")
+    except:
         return {}
 
 def save_json(file, data):
-    try:
-        with open(file, 'w') as f:
-            json.dump(data, f, indent=2)
-        return True
-    except Exception as e:
-        print(f"Error saving {file}: {e}")
-        return False
+    with open(file, 'w') as f:
+        json.dump(data, f, indent=2)
 
 def get_user(user_id):
     users = load_json("users.json")
@@ -625,4 +617,10 @@ async def stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     
     users = load_json("users.json")
-    text = f"📊 Users: {le
+    total = len(users)
+    invested = sum(u.get('invested', 0) for u in users.values())
+    text = f"📊 Users: {total}\n💰 Invested: ₹{invested}"
+    await update.message.reply_text(text)
+
+async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    text = "/st
