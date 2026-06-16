@@ -12,10 +12,11 @@ BOT_TOKEN = os.getenv("BOT_TOKEN")
 
 if not BOT_TOKEN:
     print("❌ ERROR: BOT_TOKEN not found!")
+    print("Please add BOT_TOKEN in Railway Environment Variables")
     exit(1)
 
-# 🔑 APNA TELEGRAM USER ID YAHAN DALEIN!
-ADMIN_IDS = [8473800312]
+# Admin IDs
+ADMIN_IDS = [8473800312]  # Apni ID daalein
 
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -24,11 +25,12 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # ==================== DATA FILES ====================
-USERS_FILE = "users.json"
-TRANSACTIONS_FILE = "transactions.json"
-WITHDRAWALS_FILE = "withdrawals.json"
+# Railway par files create karein
+for file in ["users.json", "transactions.json", "withdrawals.json"]:
+    if not os.path.exists(file):
+        with open(file, 'w') as f:
+            json.dump({}, f)
 
-# ==================== LOAD/SAVE FUNCTIONS ====================
 def load_json(file):
     try:
         with open(file, 'r') as f:
@@ -40,30 +42,21 @@ def save_json(file, data):
     with open(file, 'w') as f:
         json.dump(data, f, indent=2)
 
-def load_users():
-    return load_json(USERS_FILE)
-
-def save_users(users):
-    save_json(USERS_FILE, users)
-
-def load_transactions():
-    return load_json(TRANSACTIONS_FILE)
-
-def save_transactions(txns):
-    save_json(TRANSACTIONS_FILE, txns)
-
-def load_withdrawals():
-    return load_json(WITHDRAWALS_FILE)
-
-def save_withdrawals(wds):
-    save_json(WITHDRAWALS_FILE, wds)
-
 # ==================== USER FUNCTIONS ====================
-def generate_referral_code():
-    return ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
+def get_user(user_id):
+    users = load_json("users.json")
+    return users.get(str(user_id))
+
+def update_user(user_id, data):
+    users = load_json("users.json")
+    if str(user_id) in users:
+        users[str(user_id)].update(data)
+        save_json("users.json", users)
+        return True
+    return False
 
 def create_user(user_id, username, first_name):
-    users = load_users()
+    users = load_json("users.json")
     if str(user_id) not in users:
         users[str(user_id)] = {
             "user_id": user_id,
@@ -80,146 +73,55 @@ def create_user(user_id, username, first_name):
             "daily_reward": 0,
             "last_claim_date": None,
             "days_claimed": 0,
-            "total_claimed": 0,
             "games_played": 0,
             "games_won": 0,
-            "game_bonus": 0,
-            "referral_code": generate_referral_code(),
-            "referred_by": None,
             "referrals": 0,
-            "referral_bonus": 0,
             "total_withdrawn": 0,
             "pending_withdrawal": 0,
-            "joined_at": str(datetime.now()),
-            "last_active": str(datetime.now()),
-            "is_active": True
+            "joined_at": str(datetime.now())
         }
-        save_users(users)
+        save_json("users.json", users)
         return True
     return False
 
-def get_user(user_id):
-    users = load_users()
-    return users.get(str(user_id))
-
-def update_user(user_id, data):
-    users = load_users()
-    if str(user_id) in users:
-        users[str(user_id)].update(data)
-        save_users(users)
-        return True
-    return False
-
-def add_transaction(user_id, txn_type, amount, description, status="completed"):
-    txns = load_transactions()
-    txn_id = f"txn_{int(datetime.now().timestamp())}_{random.randint(1000, 9999)}"
-    txns[txn_id] = {
-        "user_id": user_id,
-        "type": txn_type,
-        "amount": amount,
-        "description": description,
-        "status": status,
-        "date": str(datetime.now())
-    }
-    save_transactions(txns)
-    return txn_id
-
-# ==================== INVESTMENT PLANS ====================
+# ==================== PLANS ====================
 PLANS = {
-    "basic": {
-        "name": "🟢 Basic",
-        "min": 500,
-        "max": 1000,
-        "daily_return": 2,
-        "duration": 30,
-        "total_return": 60
-    },
-    "silver": {
-        "name": "🔵 Silver",
-        "min": 2000,
-        "max": 5000,
-        "daily_return": 2.5,
-        "duration": 30,
-        "total_return": 75
-    },
-    "gold": {
-        "name": "🟡 Gold",
-        "min": 10000,
-        "max": 25000,
-        "daily_return": 3,
-        "duration": 30,
-        "total_return": 90
-    },
-    "platinum": {
-        "name": "🔴 Platinum",
-        "min": 50000,
-        "max": 100000,
-        "daily_return": 4,
-        "duration": 30,
-        "total_return": 120
-    }
+    "basic": {"name": "Basic", "min": 500, "max": 1000, "daily_return": 2, "duration": 30},
+    "silver": {"name": "Silver", "min": 2000, "max": 5000, "daily_return": 2.5, "duration": 30},
+    "gold": {"name": "Gold", "min": 10000, "max": 25000, "daily_return": 3, "duration": 30},
+    "platinum": {"name": "Platinum", "min": 50000, "max": 100000, "daily_return": 4, "duration": 30}
 }
 
 # ==================== START ====================
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
-    user_id = user.id
-    
-    if context.args:
-        ref_code = context.args[0]
-        if ref_code.startswith("ref_"):
-            ref_by = ref_code.replace("ref_", "")
-            users = load_users()
-            if ref_by in users and str(user_id) not in users:
-                ref_user = users[ref_by]
-                ref_user["referrals"] = ref_user.get("referrals", 0) + 1
-                ref_user["referral_bonus"] = ref_user.get("referral_bonus", 0) + 50
-                ref_user["bonus_balance"] = ref_user.get("bonus_balance", 0) + 50
-                save_users(users)
-                await update.message.reply_text(
-                    "🎉 **Referral Bonus!**\n\nAapko ₹50 bonus mila hai!",
-                    parse_mode='Markdown'
-                )
-    
     create_user(user.id, user.username, user.first_name)
-    user_data = get_user(user_id)
+    user_data = get_user(user.id)
     
     text = f"""
-**🎮 WELCOME {user.first_name}!** 🎮
+🎮 **WELCOME {user.first_name}!** 🎮
 
 💰 **Investment & Rewards Bot**
 
-🔥 **FEATURES:**
-
-✅ **Invest** - ₹500 se start karein
-✅ **Daily Reward** - Rozana 2-4% return
-✅ **Game Bonus** - Game khelke extra kamao
-✅ **Refer & Earn** - Dost laao, paisa pao
-✅ **Safe Investment** - 30 days maturity
-
 📊 **Your Stats:**
-💰 Main Balance: ₹{user_data.get('main_balance', 0)}
-🎁 Bonus Balance: ₹{user_data.get('bonus_balance', 0)}
-🔒 Locked Balance: ₹{user_data.get('locked_balance', 0)}
-💎 Total Earned: ₹{user_data.get('total_earned', 0)}
+💰 Balance: ₹{user_data.get('main_balance', 0)}
+🎁 Bonus: ₹{user_data.get('bonus_balance', 0)}
 👥 Referrals: {user_data.get('referrals', 0)}
 
-⬇️ **Choose Option Below:** ⬇️
+⬇️ **Choose Option:** ⬇️
 """
     
     keyboard = [
-        [InlineKeyboardButton("💰 Invest Now", callback_data="invest")],
-        [InlineKeyboardButton("🎁 Daily Reward", callback_data="daily_reward")],
-        [InlineKeyboardButton("🎮 Play Game", callback_data="game")],
-        [InlineKeyboardButton("📊 My Wallet", callback_data="wallet")],
+        [InlineKeyboardButton("💰 Invest", callback_data="invest")],
+        [InlineKeyboardButton("🎁 Daily Reward", callback_data="daily")],
+        [InlineKeyboardButton("🎮 Game", callback_data="game")],
+        [InlineKeyboardButton("📊 Wallet", callback_data="wallet")],
         [InlineKeyboardButton("👥 Refer & Earn", callback_data="referral")],
-        [InlineKeyboardButton("🏦 Withdraw", callback_data="withdraw")],
-        [InlineKeyboardButton("📢 Proof Channel", callback_data="proof")],
-        [InlineKeyboardButton("📞 Support", callback_data="support")]
+        [InlineKeyboardButton("🏦 Withdraw", callback_data="withdraw")]
     ]
     
-    if user_id in ADMIN_IDS:
-        keyboard.append([InlineKeyboardButton("⚙️ Admin Panel", callback_data="admin")])
+    if user.id in ADMIN_IDS:
+        keyboard.append([InlineKeyboardButton("⚙️ Admin", callback_data="admin")])
     
     await update.message.reply_text(
         text,
@@ -233,36 +135,28 @@ async def invest(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.answer()
     
     text = """
-**💰 INVESTMENT PLANS** 💰
+💰 **INVESTMENT PLANS**
 
-**Choose Your Plan:**
+| Plan | Min | Daily % |
+|------|-----|---------|
+| Basic | ₹500 | 2% |
+| Silver | ₹2,000 | 2.5% |
+| Gold | ₹10,000 | 3% |
+| Platinum | ₹50,000 | 4% |
 
-| Plan | Min | Daily Return | Duration | Total |
-|------|-----|--------------|----------|-------|
-| 🟢 Basic | ₹500 | 2% | 30 Days | 60% |
-| 🔵 Silver | ₹2,000 | 2.5% | 30 Days | 75% |
-| 🟡 Gold | ₹10,000 | 3% | 30 Days | 90% |
-| 🔴 Platinum | ₹50,000 | 4% | 30 Days | 120% |
-
-📌 **How to Invest:**
-Type: `/invest [plan] [amount]`
-
+📌 `/invest [plan] [amount]`
 Example: `/invest basic 500`
 """
     
     keyboard = [
-        [InlineKeyboardButton("🟢 Basic (₹500-1000)", callback_data="plan_basic")],
-        [InlineKeyboardButton("🔵 Silver (₹2000-5000)", callback_data="plan_silver")],
-        [InlineKeyboardButton("🟡 Gold (₹10000-25000)", callback_data="plan_gold")],
-        [InlineKeyboardButton("🔴 Platinum (₹50000-1L)", callback_data="plan_platinum")],
+        [InlineKeyboardButton("Basic ₹500", callback_data="plan_basic")],
+        [InlineKeyboardButton("Silver ₹2000", callback_data="plan_silver")],
+        [InlineKeyboardButton("Gold ₹10000", callback_data="plan_gold")],
+        [InlineKeyboardButton("Platinum ₹50000", callback_data="plan_platinum")],
         [InlineKeyboardButton("🔙 Back", callback_data="back")]
     ]
     
-    await query.edit_message_text(
-        text,
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup(keyboard)
-    )
+    await query.edit_message_text(text, parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(keyboard))
 
 async def invest_plan(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -271,47 +165,29 @@ async def invest_plan(update: Update, context: ContextTypes.DEFAULT_TYPE):
     plan_name = query.data.replace("plan_", "")
     plan = PLANS.get(plan_name)
     
-    if not plan:
-        await query.edit_message_text("❌ Invalid plan!")
-        return
-    
-    context.user_data['invest_plan'] = plan_name
-    
-    text = f"""
-**{plan['name']} PLAN**
-
-💰 **Amount:** ₹{plan['min']} - ₹{plan['max']}
-📈 **Daily Return:** {plan['daily_return']}%
-⏳ **Duration:** {plan['duration']} Days
-💎 **Total Return:** {plan['total_return']}%
-
-📌 **Send amount:**
-`/invest {plan_name} [amount]`
-
-Example: `/invest {plan_name} 500`
-"""
-    
-    await query.edit_message_text(
-        text,
-        parse_mode='Markdown'
-    )
+    if plan:
+        await query.edit_message_text(
+            f"📌 **{plan['name']} Plan**\n\n"
+            f"Min: ₹{plan['min']}\n"
+            f"Max: ₹{plan['max']}\n"
+            f"Daily: {plan['daily_return']}%\n"
+            f"Duration: {plan['duration']} Days\n\n"
+            f"Send: `/invest {plan_name} [amount]`",
+            parse_mode='Markdown'
+        )
 
 async def invest_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
-    user_data = get_user(user_id)
     
     if len(context.args) < 2:
-        await update.message.reply_text(
-            "❌ **Usage:** `/invest [plan] [amount]`\n\nPlans: basic, silver, gold, platinum",
-            parse_mode='Markdown'
-        )
+        await update.message.reply_text("❌ Usage: `/invest [plan] [amount]`")
         return
     
     plan_name = context.args[0].lower()
     try:
         amount = int(context.args[1])
     except:
-        await update.message.reply_text("❌ Please enter valid amount!")
+        await update.message.reply_text("❌ Enter valid amount!")
         return
     
     plan = PLANS.get(plan_name)
@@ -320,43 +196,27 @@ async def invest_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     
     if amount < plan['min'] or amount > plan['max']:
-        await update.message.reply_text(f"❌ Amount must be between ₹{plan['min']} and ₹{plan['max']}")
-        return
-    
-    if user_data.get('plan') != 'none':
-        await update.message.reply_text("❌ You already have an active investment!")
+        await update.message.reply_text(f"❌ Amount must be ₹{plan['min']}-₹{plan['max']}")
         return
     
     daily_return = (amount * plan['daily_return']) / 100
-    total_return = (amount * plan['total_return']) / 100
     
     update_user(user_id, {
         "main_balance": amount,
         "locked_balance": amount,
         "total_invested": amount,
         "plan": plan_name,
-        "investment_date": str(datetime.now()),
-        "maturity_date": str(datetime.now() + timedelta(days=plan['duration'])),
-        "daily_reward": daily_return
+        "daily_reward": daily_return,
+        "maturity_date": str(datetime.now() + timedelta(days=plan['duration']))
     })
     
-    add_transaction(user_id, "investment", amount, f"Invested in {plan['name']} plan")
-    
-    text = f"""
-✅ **INVESTMENT SUCCESSFUL!**
-
-📊 **Plan:** {plan['name']}
-💰 **Amount:** ₹{amount}
-📈 **Daily Return:** ₹{daily_return:.0f}
-📅 **Duration:** {plan['duration']} Days
-💎 **Total Return:** ₹{total_return:.0f}
-
-🔒 **Locked Balance:** ₹{amount}
-
-🎁 **Claim daily reward every day!**
-"""
-    
-    await update.message.reply_text(text, parse_mode='Markdown')
+    await update.message.reply_text(
+        f"✅ **Investment Successful!**\n\n"
+        f"Plan: {plan['name']}\n"
+        f"Amount: ₹{amount}\n"
+        f"Daily Reward: ₹{daily_return:.0f}",
+        parse_mode='Markdown'
+    )
 
 # ==================== DAILY REWARD ====================
 async def daily_reward(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -367,73 +227,32 @@ async def daily_reward(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_data = get_user(user_id)
     
     if user_data.get('plan') == 'none':
-        await query.edit_message_text(
-            "❌ You don't have any active investment!",
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("💰 Invest Now", callback_data="invest")],
-                [InlineKeyboardButton("🔙 Back", callback_data="back")]
-            ])
-        )
+        await query.edit_message_text("❌ No active investment!")
         return
     
     last_claim = user_data.get('last_claim_date')
     today = str(datetime.now().date())
     
     if last_claim == today:
-        await query.edit_message_text(
-            "❌ Already claimed today! Come back tomorrow.",
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("🔙 Back", callback_data="back")]
-            ])
-        )
+        await query.edit_message_text("❌ Already claimed today!")
         return
     
-    daily_return = user_data.get('daily_reward', 0)
-    days_claimed = user_data.get('days_claimed', 0)
-    plan = PLANS.get(user_data.get('plan'))
-    
-    if plan and days_claimed >= plan['duration']:
-        await query.edit_message_text(
-            "✅ **Investment Matured!**\n\nYou can withdraw now!",
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("🏦 Withdraw", callback_data="withdraw")],
-                [InlineKeyboardButton("🔙 Back", callback_data="back")]
-            ])
-        )
-        return
-    
-    reward = int(daily_return)
+    reward = int(user_data.get('daily_reward', 0))
     main_balance = user_data.get('main_balance', 0)
-    new_balance = main_balance + reward
+    days_claimed = user_data.get('days_claimed', 0)
     
     update_user(user_id, {
-        "main_balance": new_balance,
+        "main_balance": main_balance + reward,
         "last_claim_date": today,
         "days_claimed": days_claimed + 1,
-        "total_claimed": user_data.get('total_claimed', 0) + reward,
         "total_earned": user_data.get('total_earned', 0) + reward
     })
     
-    add_transaction(user_id, "daily_reward", reward, f"Daily reward - Day {days_claimed + 1}")
-    
-    text = f"""
-🎁 **DAILY REWARD CLAIMED!**
-
-📅 **Day:** {days_claimed + 1}/{plan['duration']}
-💰 **Reward:** ₹{reward}
-💎 **New Balance:** ₹{new_balance}
-
-⏳ **Next Reward:** Tomorrow
-"""
-    
     await query.edit_message_text(
-        text,
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("🎮 Play Game", callback_data="game")],
-            [InlineKeyboardButton("📊 My Wallet", callback_data="wallet")],
-            [InlineKeyboardButton("🔙 Back", callback_data="back")]
-        ])
+        f"🎁 **Daily Reward!**\n\n"
+        f"💰 Amount: ₹{reward}\n"
+        f"💎 New Balance: ₹{main_balance + reward}",
+        parse_mode='Markdown'
     )
 
 # ==================== GAME ====================
@@ -445,60 +264,18 @@ async def game(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_data = get_user(user_id)
     
     if user_data.get('main_balance', 0) < 50:
-        await query.edit_message_text(
-            f"❌ **Insufficient Balance!**\n\nGame entry fee: ₹50\nYour Balance: ₹{user_data.get('main_balance', 0)}",
-            parse_mode='Markdown',
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("💰 Invest", callback_data="invest")],
-                [InlineKeyboardButton("🎁 Daily Reward", callback_data="daily_reward")],
-                [InlineKeyboardButton("🔙 Back", callback_data="back")]
-            ])
-        )
+        await query.edit_message_text("❌ Need ₹50 to play!")
         return
     
-    text = f"""
-🎮 **LUCKY NUMBER GAME**
-
-💰 **Entry Fee:** ₹50
-🎯 **Win Prize:** ₹100 (2x)
-❌ **Loss:** ₹50 goes to pool
-
-**Rules:**
-1. Guess a number between 1-10
-2. If correct → You win ₹100!
-3. If wrong → ₹50 lost
-
-📊 **Your Stats:**
-• Games Played: {user_data.get('games_played', 0)}
-• Games Won: {user_data.get('games_won', 0)}
-
-⬇️ **Type a number (1-10) to play!**
-"""
-    
     context.user_data['game_active'] = True
-    context.user_data['game_bet'] = 50
     context.user_data['secret_number'] = random.randint(1, 10)
     
     await query.edit_message_text(
-        text,
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("❌ Cancel", callback_data="cancel_game")]
-        ])
-    )
-
-async def cancel_game(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
-    
-    context.user_data['game_active'] = False
-    
-    await query.edit_message_text(
-        "✅ **Game Cancelled!**",
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("🏠 Main Menu", callback_data="back")]
-        ])
+        "🎮 **Lucky Number Game**\n\n"
+        "💰 Entry: ₹50\n"
+        "🎯 Win: ₹100\n\n"
+        "**Type a number (1-10):**",
+        parse_mode='Markdown'
     )
 
 async def handle_game(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -510,86 +287,51 @@ async def handle_game(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         guess = int(update.message.text)
     except:
-        await update.message.reply_text("❌ Please send a **number** (1-10)!")
+        await update.message.reply_text("❌ Send a number!")
         return
     
     if guess < 1 or guess > 10:
-        await update.message.reply_text("❌ Number must be **between 1-10**!")
+        await update.message.reply_text("❌ Number must be 1-10!")
         return
     
-    user_data = get_user(user_id)
     secret = context.user_data.get('secret_number')
-    bet = context.user_data.get('game_bet', 50)
+    user_data = get_user(user_id)
+    main_balance = user_data.get('main_balance', 0)
     
     if guess == secret:
-        win_amount = 100
-        platform_fee = int(win_amount * 0.1)
-        winner_amount = win_amount - platform_fee
-        
-        main_balance = user_data.get('main_balance', 0)
-        new_balance = main_balance - bet + winner_amount
+        win_amount = 90  # ₹100 - 10% fee
+        new_balance = main_balance - 50 + win_amount
         
         update_user(user_id, {
             "main_balance": new_balance,
             "games_played": user_data.get('games_played', 0) + 1,
             "games_won": user_data.get('games_won', 0) + 1,
-            "game_bonus": user_data.get('game_bonus', 0) + winner_amount,
-            "total_earned": user_data.get('total_earned', 0) + winner_amount
+            "total_earned": user_data.get('total_earned', 0) + win_amount
         })
         
-        add_transaction(user_id, "game_win", winner_amount, f"Won game! Guess: {guess}, Secret: {secret}")
-        
-        text = f"""
-🎉 **CONGRATULATIONS! YOU WON!**
-
-🎯 Your Guess: {guess}
-🔢 Secret Number: {secret}
-
-💰 Bet Amount: ₹{bet}
-💎 Win Amount: ₹{winner_amount}
-🏦 Platform Fee: ₹{platform_fee} (10%)
-
-📊 New Balance: ₹{new_balance}
-"""
-        keyboard = [
-            [InlineKeyboardButton("🎮 Play Again", callback_data="game")],
-            [InlineKeyboardButton("🎁 Daily Reward", callback_data="daily_reward")],
-            [InlineKeyboardButton("🏠 Main Menu", callback_data="back")]
-        ]
-        
-        await update.message.reply_text(text, parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(keyboard))
-        
+        await update.message.reply_text(
+            f"🎉 **YOU WON!**\n\n"
+            f"Your Guess: {guess}\n"
+            f"Secret: {secret}\n"
+            f"💰 You won ₹{win_amount}!\n"
+            f"💎 New Balance: ₹{new_balance}",
+            parse_mode='Markdown'
+        )
     else:
-        main_balance = user_data.get('main_balance', 0)
-        new_balance = main_balance - bet
+        new_balance = main_balance - 50
         
         update_user(user_id, {
             "main_balance": new_balance,
             "games_played": user_data.get('games_played', 0) + 1
         })
         
-        add_transaction(user_id, "game_loss", bet, f"Lost game! Guess: {guess}, Secret: {secret}")
-        
-        text = f"""
-❌ **SORRY! YOU LOST!**
-
-🎯 Your Guess: {guess}
-🔢 Secret Number: {secret}
-
-💰 Bet Amount: ₹{bet}
-💎 Amount Lost: ₹{bet}
-
-📊 New Balance: ₹{new_balance}
-
-💡 Try again! You can win next time!
-"""
-        keyboard = [
-            [InlineKeyboardButton("🎮 Try Again", callback_data="game")],
-            [InlineKeyboardButton("🎁 Daily Reward", callback_data="daily_reward")],
-            [InlineKeyboardButton("🏠 Main Menu", callback_data="back")]
-        ]
-        
-        await update.message.reply_text(text, parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(keyboard))
+        await update.message.reply_text(
+            f"❌ **YOU LOST!**\n\n"
+            f"Your Guess: {guess}\n"
+            f"Secret: {secret}\n"
+            f"💎 New Balance: ₹{new_balance}",
+            parse_mode='Markdown'
+        )
     
     context.user_data['game_active'] = False
 
@@ -601,38 +343,259 @@ async def wallet(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     user_data = get_user(user_id)
     
-    plan_name = user_data.get('plan', 'none')
-    plan = PLANS.get(plan_name)
-    
     text = f"""
 📊 **MY WALLET**
 
-💰 Main Balance: ₹{user_data.get('main_balance', 0)}
-🎁 Bonus Balance: ₹{user_data.get('bonus_balance', 0)}
-🔒 Locked Balance: ₹{user_data.get('locked_balance', 0)}
-
-📈 Total Earned: ₹{user_data.get('total_earned', 0)}
-💎 Total Invested: ₹{user_data.get('total_invested', 0)}
-🏦 Total Withdrawn: ₹{user_data.get('total_withdrawn', 0)}
-
-📅 Investment Plan: {plan['name'] if plan else 'None'}
-📈 Daily Reward: ₹{user_data.get('daily_reward', 0):.0f}/day
-📅 Days Claimed: {user_data.get('days_claimed', 0)}/{plan['duration'] if plan else 0}
-🎮 Games Played: {user_data.get('games_played', 0)}
-🏆 Games Won: {user_data.get('games_won', 0)}
+💰 Balance: ₹{user_data.get('main_balance', 0)}
+🎁 Bonus: ₹{user_data.get('bonus_balance', 0)}
+🔒 Locked: ₹{user_data.get('locked_balance', 0)}
+📈 Earned: ₹{user_data.get('total_earned', 0)}
+💎 Invested: ₹{user_data.get('total_invested', 0)}
+🏦 Withdrawn: ₹{user_data.get('total_withdrawn', 0)}
+🎮 Games: {user_data.get('games_played', 0)}
+🏆 Wins: {user_data.get('games_won', 0)}
 👥 Referrals: {user_data.get('referrals', 0)}
 """
     
-    await query.edit_message_text(
-        text,
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("🏦 Withdraw", callback_data="withdraw")],
-            [InlineKeyboardButton("💰 Invest", callback_data="invest")],
-            [InlineKeyboardButton("🔙 Back", callback_data="back")]
-        ])
-    )
+    await query.edit_message_text(text, parse_mode='Markdown')
 
 # ==================== REFERRAL ====================
 async def referral(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query
+    query = update.callback_query
+    await query.answer()
+    
+    user_id = update.effective_user.id
+    
+    text = f"""
+👥 **REFER & EARN**
+
+💰 ₹50 per referral!
+
+📤 **Your Link:**
+`https://t.me/{context.bot.username}?start=ref_{user_id}`
+
+💡 Share and earn!
+"""
+    
+    await query.edit_message_text(text, parse_mode='Markdown')
+
+# ==================== WITHDRAW ====================
+async def withdraw(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    
+    user_id = update.effective_user.id
+    user_data = get_user(user_id)
+    
+    balance = user_data.get('main_balance', 0)
+    
+    if balance < 100:
+        await query.edit_message_text(f"❌ Min withdrawal ₹100!\nYour Balance: ₹{balance}")
+        return
+    
+    await query.edit_message_text(
+        f"🏦 **WITHDRAWAL**\n\n"
+        f"Balance: ₹{balance}\n"
+        f"Min: ₹100 | Max: ₹500\n"
+        f"Fee: ₹10\n\n"
+        f"Send: `/withdraw [amount]`",
+        parse_mode='Markdown'
+    )
+
+async def withdraw_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    
+    if len(context.args) < 1:
+        await update.message.reply_text("❌ Usage: `/withdraw [amount]`")
+        return
+    
+    try:
+        amount = int(context.args[0])
+    except:
+        await update.message.reply_text("❌ Enter valid amount!")
+        return
+    
+    user_data = get_user(user_id)
+    balance = user_data.get('main_balance', 0)
+    
+    if amount < 100:
+        await update.message.reply_text("❌ Min ₹100!")
+        return
+    
+    if amount > 500:
+        await update.message.reply_text("❌ Max ₹500 per day!")
+        return
+    
+    if amount > balance:
+        await update.message.reply_text(f"❌ Insufficient! You have ₹{balance}")
+        return
+    
+    net_amount = amount - 10
+    
+    update_user(user_id, {
+        "main_balance": balance - amount,
+        "total_withdrawn": user_data.get('total_withdrawn', 0) + net_amount
+    })
+    
+    await update.message.reply_text(
+        f"✅ **Withdrawal Request Sent!**\n\n"
+        f"Amount: ₹{amount}\n"
+        f"Fee: ₹10\n"
+        f"Net: ₹{net_amount}\n"
+        f"⏳ Processing: 24-48 hrs",
+        parse_mode='Markdown'
+    )
+
+# ==================== BACK ====================
+async def back(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    
+    user_id = update.effective_user.id
+    user_data = get_user(user_id)
+    
+    text = f"🎮 **Main Menu**\n\n💰 Balance: ₹{user_data.get('main_balance', 0)}"
+    
+    keyboard = [
+        [InlineKeyboardButton("💰 Invest", callback_data="invest")],
+        [InlineKeyboardButton("🎁 Daily Reward", callback_data="daily")],
+        [InlineKeyboardButton("🎮 Game", callback_data="game")],
+        [InlineKeyboardButton("📊 Wallet", callback_data="wallet")],
+        [InlineKeyboardButton("👥 Refer & Earn", callback_data="referral")],
+        [InlineKeyboardButton("🏦 Withdraw", callback_data="withdraw")]
+    ]
+    
+    if user_id in ADMIN_IDS:
+        keyboard.append([InlineKeyboardButton("⚙️ Admin", callback_data="admin")])
+    
+    await query.edit_message_text(text, parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(keyboard))
+
+# ==================== ADMIN ====================
+async def admin(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    
+    user_id = update.effective_user.id
+    
+    if user_id not in ADMIN_IDS:
+        await query.edit_message_text("❌ Not admin!")
+        return
+    
+    users = load_json("users.json")
+    
+    text = f"""
+⚙️ **ADMIN PANEL**
+
+👥 Users: {len(users)}
+💰 Total Invested: ₹{sum(u.get('total_invested', 0) for u in users.values())}
+💎 Total Earned: ₹{sum(u.get('total_earned', 0) for u in users.values())}
+
+📌 Commands:
+/stats - Stats
+/broadcast [msg] - Send to all
+"""
+    
+    await query.edit_message_text(text, parse_mode='Markdown')
+
+# ==================== STATS ====================
+async def stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    
+    if user_id not in ADMIN_IDS:
+        await update.message.reply_text("❌ Not admin!")
+        return
+    
+    users = load_json("users.json")
+    
+    text = f"""
+📊 **STATS**
+
+👥 Users: {len(users)}
+💰 Invested: ₹{sum(u.get('total_invested', 0) for u in users.values())}
+💎 Earned: ₹{sum(u.get('total_earned', 0) for u in users.values())}
+"""
+    
+    await update.message.reply_text(text, parse_mode='Markdown')
+
+# ==================== BROADCAST ====================
+async def broadcast_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    
+    if user_id not in ADMIN_IDS:
+        await update.message.reply_text("❌ Not admin!")
+        return
+    
+    if len(context.args) < 1:
+        await update.message.reply_text("❌ Usage: `/broadcast [message]`")
+        return
+    
+    message = ' '.join(context.args)
+    users = load_json("users.json")
+    sent = 0
+    
+    for uid in users:
+        try:
+            await context.bot.send_message(
+                chat_id=int(uid),
+                text=f"📢 **Announcement**\n\n{message}",
+                parse_mode='Markdown'
+            )
+            sent += 1
+        except:
+            pass
+    
+    await update.message.reply_text(f"✅ Broadcast sent to {sent} users!")
+
+# ==================== HELP ====================
+async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text(
+        "📚 **COMMANDS**\n\n"
+        "/start - Main Menu\n"
+        "/invest [plan] [amount] - Invest\n"
+        "/withdraw [amount] - Withdraw\n"
+        "/stats - Admin Stats\n"
+        "/broadcast [msg] - Admin Broadcast",
+        parse_mode='Markdown'
+    )
+
+# ==================== ERROR ====================
+async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    logger.error(f"Error: {context.error}")
+
+# ==================== MAIN ====================
+def main():
+    print("🤖 Starting Investment Bot...")
+    print(f"✅ Bot Token: {'Found ✅' if BOT_TOKEN else 'Not Found ❌'}")
+    
+    app = Application.builder().token(BOT_TOKEN).build()
+    
+    # Commands
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("help", help_command))
+    app.add_handler(CommandHandler("invest", invest_command))
+    app.add_handler(CommandHandler("withdraw", withdraw_command))
+    app.add_handler(CommandHandler("stats", stats_command))
+    app.add_handler(CommandHandler("broadcast", broadcast_command))
+    
+    # Callbacks
+    app.add_handler(CallbackQueryHandler(invest, pattern="^invest$"))
+    app.add_handler(CallbackQueryHandler(invest_plan, pattern="^plan_"))
+    app.add_handler(CallbackQueryHandler(daily_reward, pattern="^daily$"))
+    app.add_handler(CallbackQueryHandler(game, pattern="^game$"))
+    app.add_handler(CallbackQueryHandler(wallet, pattern="^wallet$"))
+    app.add_handler(CallbackQueryHandler(referral, pattern="^referral$"))
+    app.add_handler(CallbackQueryHandler(withdraw, pattern="^withdraw$"))
+    app.add_handler(CallbackQueryHandler(back, pattern="^back$"))
+    app.add_handler(CallbackQueryHandler(admin, pattern="^admin$"))
+    
+    # Game handler
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_game))
+    
+    # Error handler
+    app.add_error_handler(error_handler)
+    
+    print("✅ Bot is running!")
+    app.run_polling(allowed_updates=[])
+
+if __name__ == "__main__":
+    main()
