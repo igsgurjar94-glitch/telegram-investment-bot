@@ -10,7 +10,7 @@ from telegram.ext import Application, CommandHandler, CallbackQueryHandler, Mess
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 
 if not BOT_TOKEN:
-    print("ERROR: BOT_TOKEN not found!")
+    print("❌ ERROR: BOT_TOKEN not found! Set BOT_TOKEN in environment variables.")
     exit(1)
 
 ADMIN_IDS = [8473800312]  # 🔑 APNI ID YAHAN DALEIN!
@@ -642,7 +642,4 @@ async def admin_users(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 async def admin_broadcast(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
-    
-    u
+    query = update.callback
