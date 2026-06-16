@@ -75,7 +75,7 @@ def create_user(user_id, username, first_name):
 
 # ==================== PLANS ====================
 PLANS = {
-    "basic": {"name": "Basic", "min": 500, "max": 999, "daily": 2},
+    "basic": {"name": "Basic", "min": 500, "max": 1000, "daily": 2},
     "silver": {"name": "Silver", "min": 2000, "max": 5000, "daily": 2.5},
     "gold": {"name": "Gold", "min": 10000, "max": 25000, "daily": 3},
     "platinum": {"name": "Platinum", "min": 50000, "max": 100000, "daily": 4}
@@ -538,7 +538,10 @@ async def admin_pending(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     
     wds = load_json("withdrawals.json")
-    pending = {k: v for k, v in wds.items() if v.get('status') == 'pending'}
+    pending = {}
+    for k, v in wds.items():
+        if v.get('status') == 'pending':
+            pending[k] = v
     
     if not pending:
         text = "No pending withdrawals!"
@@ -599,7 +602,7 @@ async def approve_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     wds[wid]['status'] = 'approved'
     save_json("withdrawals.json", wds)
     
-    await update.message.reply_text(f"Withdrawal approved!")
+    await update.message.reply_text("Withdrawal approved!")
 
 async def stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
@@ -614,5 +617,4 @@ async def stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("/start - Main Menu\n/invest - Invest\n/withdraw - Withdraw")
 
-# ==================== ERROR ====================
-async def error_handler(update: Update, cont
+# ==================== ERROR HANDLER ====================
