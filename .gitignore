@@ -1,13 +1,13 @@
 __pycache__/
 *.pyc
 *.pyo
-.Python
-env/
+.env
 venv/
 .venv/
 .vscode/
 .idea/
 *.log
 .DS_Store
-*.db
-*.sqlite3
+users.json
+transactions.json
+withdrawals.json
