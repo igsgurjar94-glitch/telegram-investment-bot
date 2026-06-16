@@ -5,17 +5,6 @@ from datetime import datetime
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ContextTypes
 
-from admin_handlers import (
-    show_admin_panel,
-    admin_view_users,
-    admin_broadcast,
-    admin_stats,
-    cancel_broadcast,
-    handle_broadcast_message,
-    load_users,
-    count_active_users
-)
-
 # ==================== CONFIG ====================
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 
@@ -23,18 +12,42 @@ if not BOT_TOKEN:
     print("❌ ERROR: BOT_TOKEN not found!")
     exit(1)
 
-# 🔑 APNA TELEGRAM USER ID YAHAN DALEIN!
-ADMIN_IDS = [8473800312]  # <-- Apni ID daalein
-
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     level=logging.INFO
 )
 logger = logging.getLogger(__name__)
 
+# ==================== USERS FILE ====================
+USERS_FILE = "users.json"
+
+def load_users():
+    try:
+        with open(USERS_FILE, 'r') as f:
+            return json.load(f)
+    except:
+        return {}
+
+def save_users(users):
+    with open(USERS_FILE, 'w') as f:
+        json.dump(users, f, indent=2)
+
+def add_user(user_id, username, first_name):
+    users = load_users()
+    if str(user_id) not in users:
+        users[str(user_id)] = {
+            "id": user_id,
+            "username": username,
+            "first_name": first_name,
+            "joined_at": str(datetime.now())
+        }
+        save_users(users)
+        return True
+    return False
+
 # ==================== WELCOME MESSAGE ====================
 WELCOME_MESSAGE = """
-🚀 **WELCOME TO [SHREE GANESH BAZAR]** 🚀
+🚀 **WELCOME TO [YOUR COMPANY NAME]** 🚀
 
 💰 **Earn Money Online With Us!** 💰
 
@@ -45,30 +58,10 @@ Namaste! 🙏 Aapka swagat hai!
 💵 Daily Returns: 10% - 30%
 🏆 Referral Bonus: 5%
 
-🔽 **Neeche options mein se choose karein:** 🔽
+🔽 **Options mein se choose karein:** 🔽
 """
 
-# ==================== ADD USER ====================
-def add_user(user_id, username, first_name):
-    users = load_users()
-    if str(user_id) not in users:
-        users[str(user_id)] = {
-            "id": user_id,
-            "username": username,
-            "first_name": first_name,
-            "joined_at": str(datetime.now()),
-            "last_active": str(datetime.now())
-        }
-        with open("users.json", 'w') as f:
-            json.dump(users, f, indent=2)
-        return True
-    else:
-        users[str(user_id)]["last_active"] = str(datetime.now())
-        with open("users.json", 'w') as f:
-            json.dump(users, f, indent=2)
-        return False
-
-# ==================== START ====================
+# ==================== START COMMAND ====================
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     add_user(user.id, user.username, user.first_name)
@@ -79,21 +72,37 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 {WELCOME_MESSAGE}
 """
     
+    # 🔥 CHAT BUTTONS (Keyboard)
     keyboard = [
-        [InlineKeyboardButton("📢 Proof Channel", callback_data="proof")],
-        [InlineKeyboardButton("📞 Contact Support", callback_data="support")],
-        [InlineKeyboardButton("📊 Investment Plans", callback_data="plans")],
-        [InlineKeyboardButton("❓ Help / FAQ", callback_data="help")]
+        [
+            InlineKeyboardButton("📢 Proof Channel", callback_data="proof"),
+            InlineKeyboardButton("📞 Support", callback_data="support")
+        ],
+        [
+            InlineKeyboardButton("📊 Investment Plans", callback_data="plans"),
+            InlineKeyboardButton("❓ Help", callback_data="help")
+        ]
     ]
     
-    if user.id in ADMIN_IDS:
-        keyboard.append([InlineKeyboardButton("⚙️ Admin Panel", callback_data="admin_panel")])
+    reply_markup = InlineKeyboardMarkup(keyboard)
     
-    await update.message.reply_text(
-        welcome,
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup(keyboard)
-    )
+    # 📸 IMAGE SEND KAREIN PEHLE
+    image_url = "https://example.com/your-image.jpg"  # ⚠️ YAHAN APNI IMAGE URL DALEIN!
+    
+    try:
+        await update.message.reply_photo(
+            photo=image_url,
+            caption=welcome,
+            parse_mode='Markdown',
+            reply_markup=reply_markup
+        )
+    except:
+        # Agar image nahi mili toh sirf text bhejein
+        await update.message.reply_text(
+            welcome,
+            parse_mode='Markdown',
+            reply_markup=reply_markup
+        )
 
 # ==================== BUTTON CALLBACK ====================
 async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -103,43 +112,12 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     data = query.data
     
-    # ===== ADMIN PANEL CALLBACKS =====
-    if data == "admin_panel":
-        if user.id in ADMIN_IDS:
-            await show_admin_panel(update, context)
-        else:
-            await query.edit_message_text("❌ Aap admin nahi hain!")
-        return
-    
-    if data == "admin_back":
-        if user.id in ADMIN_IDS:
-            await show_admin_panel(update, context)
-        return
-    
-    if data == "admin_users":
-        if user.id in ADMIN_IDS:
-            await admin_view_users(update, context)
-        return
-    
-    if data == "admin_broadcast":
-        if user.id in ADMIN_IDS:
-            await admin_broadcast(update, context)
-        return
-    
-    if data == "admin_stats":
-        if user.id in ADMIN_IDS:
-            await admin_stats(update, context)
-        return
-    
-    if data == "cancel_broadcast":
-        if user.id in ADMIN_IDS:
-            await cancel_broadcast(update, context)
-        return
-    
-    # ===== NORMAL USER CALLBACKS =====
+    # ===== PROOF CHANNEL =====
     if data == "proof":
         text = """
 📢 **PROOF CHANNEL** 📢
+
+✅ Hamare real payment proofs:
 
 🔹 Channel: [@your_proof_channel](https://t.me/your_proof_channel)
 🔹 500+ Satisfied Investors
@@ -148,13 +126,18 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 👇 **Join karein:**
 👉 [@your_proof_channel](https://t.me/your_proof_channel)
 """
+        keyboard = [
+            [InlineKeyboardButton("🔙 Back", callback_data="back")],
+            [InlineKeyboardButton("📢 Join Channel", url="https://t.me/your_proof_channel")]
+        ]
         await query.edit_message_text(
             text,
             parse_mode='Markdown',
             disable_web_page_preview=True,
-            reply_markup=back_button()
+            reply_markup=InlineKeyboardMarkup(keyboard)
         )
     
+    # ===== CONTACT SUPPORT =====
     elif data == "support":
         text = """
 📞 **CONTACT SUPPORT** 📞
@@ -165,12 +148,17 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 📌 **24/7 Available**
 """
+        keyboard = [
+            [InlineKeyboardButton("🔙 Back", callback_data="back")],
+            [InlineKeyboardButton("📩 Contact Admin", url="https://t.me/your_admin")]
+        ]
         await query.edit_message_text(
             text,
             parse_mode='Markdown',
-            reply_markup=back_button()
+            reply_markup=InlineKeyboardMarkup(keyboard)
         )
     
+    # ===== INVESTMENT PLANS =====
     elif data == "plans":
         text = """
 📊 **INVESTMENT PLANS** 📊
@@ -179,56 +167,103 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 │ 🥇 BASIC PLAN               │
 │ 💵 ₹500 - ₹5,000            │
 │ 📈 10% Daily Returns        │
+│ ⏳ 30 Days                  │
 └─────────────────────────────┘
 
 ┌─────────────────────────────┐
 │ 🥈 SILVER PLAN              │
 │ 💵 ₹5,001 - ₹25,000         │
 │ 📈 15% Daily Returns        │
+│ ⏳ 30 Days                  │
 └─────────────────────────────┘
 
 ┌─────────────────────────────┐
 │ 🥇 GOLD PLAN                │
 │ 💵 ₹25,001 - ₹1L            │
 │ 📈 20% Daily Returns        │
+│ ⏳ 30 Days                  │
 └─────────────────────────────┘
 
 ┌─────────────────────────────┐
 │ 👑 PLATINUM PLAN            │
 │ 💵 ₹1L+                     │
 │ 📈 30% Daily Returns        │
+│ ⏳ 30 Days                  │
 └─────────────────────────────┘
 
 📌 Minimum: ₹500 only!
 ✅ Instant Withdrawal
 """
+        keyboard = [
+            [InlineKeyboardButton("🔙 Back", callback_data="back")],
+            [InlineKeyboardButton("💰 Invest Now", callback_data="invest")]
+        ]
         await query.edit_message_text(
             text,
             parse_mode='Markdown',
-            reply_markup=back_button()
+            reply_markup=InlineKeyboardMarkup(keyboard)
         )
     
+    # ===== INVEST NOW =====
+    elif data == "invest":
+        text = """
+💰 **INVEST NOW** 💰
+
+Apna investment plan select karein:
+
+1️⃣ Basic Plan - ₹500
+2️⃣ Silver Plan - ₹5,000
+3️⃣ Gold Plan - ₹25,000
+4️⃣ Platinum Plan - ₹1,00,000
+
+📌 **Steps:**
+1. Support se contact karein
+2. Payment karein (UPI/Bank)
+3. Investment confirm ho jayega
+
+👇 **Support se baat karein:**
+"""
+        keyboard = [
+            [InlineKeyboardButton("🔙 Back", callback_data="back")],
+            [InlineKeyboardButton("📞 Contact Support", url="https://t.me/your_admin")]
+        ]
+        await query.edit_message_text(
+            text,
+            parse_mode='Markdown',
+            reply_markup=InlineKeyboardMarkup(keyboard)
+        )
+    
+    # ===== HELP / FAQ =====
     elif data == "help":
         text = """
 ❓ **HELP / FAQ** ❓
 
-Q: Minimum investment?
+**Q: Minimum investment?**
 A: ₹500/-
 
-Q: Returns kaise milte hain?
+**Q: Returns kaise milte hain?**
 A: Daily aapke wallet mein
 
-Q: Withdrawal kaise karein?
+**Q: Withdrawal kaise karein?**
 A: Support se contact karein
 
-🔄 /start - Dobara start karein
+**Q: Kya ye safe hai?**
+A: 100% Secure platform
+
+📌 **Still have questions?**
+Contact support 👇
 """
+        keyboard = [
+            [InlineKeyboardButton("🔙 Back", callback_data="back")],
+            [InlineKeyboardButton("📞 Contact Support", url="https://t.me/your_admin")]
+        ]
         await query.edit_message_text(
             text,
             parse_mode='Markdown',
-            reply_markup=back_button()
+            reply_markup=InlineKeyboardMarkup(keyboard)
         )
     
+    # ===== BACK TO MAIN MENU =====
     elif data == "back":
         welcome = f"""
 👋 **Namaste {user.first_name}!** 👋
@@ -236,25 +271,35 @@ A: Support se contact karein
 {WELCOME_MESSAGE}
 """
         keyboard = [
-            [InlineKeyboardButton("📢 Proof Channel", callback_data="proof")],
-            [InlineKeyboardButton("📞 Contact Support", callback_data="support")],
-            [InlineKeyboardButton("📊 Investment Plans", callback_data="plans")],
-            [InlineKeyboardButton("❓ Help / FAQ", callback_data="help")]
+            [
+                InlineKeyboardButton("📢 Proof Channel", callback_data="proof"),
+                InlineKeyboardButton("📞 Support", callback_data="support")
+            ],
+            [
+                InlineKeyboardButton("📊 Investment Plans", callback_data="plans"),
+                InlineKeyboardButton("❓ Help", callback_data="help")
+            ]
         ]
-        if user.id in ADMIN_IDS:
-            keyboard.append([InlineKeyboardButton("⚙️ Admin Panel", callback_data="admin_panel")])
         
-        await query.edit_message_text(
-            welcome,
-            parse_mode='Markdown',
-            reply_markup=InlineKeyboardMarkup(keyboard)
-        )
+        # Image ke saath wapas bhejein
+        image_url = "https://example.com/your-image.jpg"
+        try:
+            await query.edit_message_media(
+                media=InputMediaPhoto(
+                    media=image_url,
+                    caption=welcome,
+                    parse_mode='Markdown'
+                ),
+                reply_markup=InlineKeyboardMarkup(keyboard)
+            )
+        except:
+            await query.edit_message_text(
+                welcome,
+                parse_mode='Markdown',
+                reply_markup=InlineKeyboardMarkup(keyboard)
+            )
 
-def back_button():
-    keyboard = [[InlineKeyboardButton("🔙 Back to Main Menu", callback_data="back")]]
-    return InlineKeyboardMarkup(keyboard)
-
-# ==================== HELP ====================
+# ==================== HELP COMMAND ====================
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = """
 📚 **Commands:**
@@ -262,7 +307,6 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 /start - Main menu
 /help - Help
 /status - Bot status
-/cancel - Cancel broadcast
 """
     keyboard = [
         [InlineKeyboardButton("📢 Proof", callback_data="proof")],
@@ -282,40 +326,27 @@ async def status_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 🤖 **Bot Status**
 
 👥 Total Users: {len(users)}
-📅 Active Today: {count_active_users()}
 ✅ Status: Online
 
 ⚡️ Bot is working perfectly!
 """
     await update.message.reply_text(text, parse_mode='Markdown')
 
-# ==================== CANCEL ====================
-async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    context.user_data['broadcast_mode'] = False
-    await update.message.reply_text("✅ Cancelled!")
-
 # ==================== ERROR ====================
 async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logger.error(f"Error: {context.error}")
-    if update and update.effective_message:
-        await update.effective_message.reply_text(
-            "⚠️ Kuch technical issue ho gaya! Support se contact karein."
-        )
 
 # ==================== MAIN ====================
 def main():
-    print("🤖 Starting Investment Bot with Admin Panel...")
+    print("🤖 Starting Investment Bot with Image...")
     print(f"✅ Bot Token: {'Found ✅' if BOT_TOKEN else 'Not Found ❌'}")
-    print(f"👑 Admins: {ADMIN_IDS}")
     
     app = Application.builder().token(BOT_TOKEN).build()
     
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("help", help_command))
     app.add_handler(CommandHandler("status", status_command))
-    app.add_handler(CommandHandler("cancel", cancel))
     app.add_handler(CallbackQueryHandler(button_callback))
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_broadcast_message))
     app.add_error_handler(error_handler)
     
     print("✅ Bot is running!")
