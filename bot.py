@@ -12,10 +12,9 @@ if not BOT_TOKEN:
     print("❌ ERROR: BOT_TOKEN not found!")
     exit(1)
 
-# Admin IDs (Yahan apna Telegram User ID daalein)
-ADMIN_IDS = [8473800312]  # 🔑 APNA TELEGRAM USER ID YAHAN DALEIN!
+# 🔑 APNA TELEGRAM USER ID YAHAN DALEIN!
+ADMIN_IDS = [8473800312]  # <-- Apni ID daalein
 
-# Users data store karne ke liye
 USERS_FILE = "users.json"
 
 logging.basicConfig(
@@ -26,7 +25,6 @@ logger = logging.getLogger(__name__)
 
 # ==================== USER MANAGEMENT ====================
 def load_users():
-    """Users ko file se load karein"""
     try:
         with open(USERS_FILE, 'r') as f:
             return json.load(f)
@@ -34,12 +32,10 @@ def load_users():
         return {}
 
 def save_users(users):
-    """Users ko file mein save karein"""
     with open(USERS_FILE, 'w') as f:
         json.dump(users, f, indent=2)
 
 def add_user(user_id, username, first_name):
-    """Naya user add karein"""
     users = load_users()
     if str(user_id) not in users:
         users[str(user_id)] = {
@@ -52,10 +48,18 @@ def add_user(user_id, username, first_name):
         save_users(users)
         return True
     else:
-        # Update last active
         users[str(user_id)]["last_active"] = str(datetime.now())
         save_users(users)
         return False
+
+def count_active_users():
+    users = load_users()
+    today = str(datetime.now().date())
+    count = 0
+    for uid, data in users.items():
+        if data.get("last_active", "").startswith(today):
+            count += 1
+    return count
 
 # ==================== WELCOME MESSAGE ====================
 WELCOME_MESSAGE = """
@@ -76,8 +80,6 @@ Namaste! 🙏 Aapka swagat hai!
 # ==================== START COMMAND ====================
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
-    
-    # User ko database mein save karein
     add_user(user.id, user.username, user.first_name)
     
     welcome = f"""
@@ -93,7 +95,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         [InlineKeyboardButton("❓ Help / FAQ", callback_data="help")]
     ]
     
-    # Agar admin hai toh admin panel button add karein
     if user.id in ADMIN_IDS:
         keyboard.append([InlineKeyboardButton("⚙️ Admin Panel", callback_data="admin_panel")])
     
@@ -103,13 +104,14 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup=InlineKeyboardMarkup(keyboard)
     )
 
-# ==================== ADMIN PANEL ====================
-async def admin_panel(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Admin Panel Show Karein"""
+# ==================== ADMIN PANEL (FIXED) ====================
+async def show_admin_panel(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Admin Panel Show Karein - Callback se call hoga"""
+    query = update.callback_query
     user = update.effective_user
     
     if user.id not in ADMIN_IDS:
-        await update.message.reply_text("❌ Aap admin nahi hain!")
+        await query.edit_message_text("❌ Aap admin nahi hain!")
         return
     
     users = load_users()
@@ -133,25 +135,14 @@ async def admin_panel(update: Update, context: ContextTypes.DEFAULT_TYPE):
         [InlineKeyboardButton("🔙 Back to Main", callback_data="back")]
     ]
     
-    await update.message.reply_text(
+    await query.edit_message_text(
         text,
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup(keyboard)
     )
 
-def count_active_users():
-    """Aaj active users count karein"""
-    users = load_users()
-    today = str(datetime.now().date())
-    count = 0
-    for uid, data in users.items():
-        if data.get("last_active", "").startswith(today):
-            count += 1
-    return count
-
-# ==================== ADMIN BUTTON HANDLERS ====================
+# ==================== ADMIN CALLBACKS ====================
 async def admin_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Admin panel ke buttons handle karein"""
     query = update.callback_query
     await query.answer()
     
@@ -164,13 +155,12 @@ async def admin_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     data = query.data
     
     if data == "admin_users":
-        # Users list dikhayein
         users = load_users()
         if not users:
             text = "📊 **No users found!**"
         else:
             text = f"📊 **Total Users:** {len(users)}\n\n"
-            for uid, data in list(users.items())[:10]:  # Sirf 10 users dikhayein
+            for uid, data in list(users.items())[:10]:
                 text += f"• {data.get('first_name', 'Unknown')} (@{data.get('username', 'N/A')})\n"
             if len(users) > 10:
                 text += f"\n... aur {len(users) - 10} users aur hain"
@@ -182,12 +172,11 @@ async def admin_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
     
     elif data == "admin_broadcast":
-        # Broadcast mode - user se message maangein
         context.user_data['broadcast_mode'] = True
         await query.edit_message_text(
             "📢 **Broadcast Mode Activated!**\n\n"
             "Message likhein jo aap sabhi users ko bhejna chahte hain.\n\n"
-            "⚠️ Ye message **ALL USERS** ko jayega! (Kuch der lag sakti hai)\n\n"
+            "⚠️ Ye message **ALL USERS** ko jayega!\n\n"
             "❌ Cancel karne ke liye /cancel type karein.",
             parse_mode='Markdown',
             reply_markup=InlineKeyboardMarkup([
@@ -203,7 +192,6 @@ async def admin_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
     
     elif data == "admin_stats":
-        # Stats dikhayein
         users = load_users()
         total = len(users)
         active = count_active_users()
@@ -217,7 +205,6 @@ async def admin_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 📅 **Bot Info:**
 • Status: ✅ Online
-• Uptime: 24/7
 • Started: {datetime.now().strftime('%Y-%m-%d')}
 
 🔧 **System:**
@@ -236,9 +223,8 @@ def admin_back_button():
     ]
     return InlineKeyboardMarkup(keyboard)
 
-# ==================== BROADCAST FUNCTION ====================
+# ==================== BROADCAST ====================
 async def handle_broadcast(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Broadcast message bhejne ke liye"""
     user = update.effective_user
     
     if user.id not in ADMIN_IDS:
@@ -246,7 +232,6 @@ async def handle_broadcast(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     if context.user_data.get('broadcast_mode'):
         message_text = update.message.text
-        
         users = load_users()
         total = len(users)
         sent = 0
@@ -264,9 +249,8 @@ async def handle_broadcast(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     parse_mode='Markdown'
                 )
                 sent += 1
-            except Exception as e:
+            except:
                 failed += 1
-                logger.error(f"Failed to send to {uid}: {e}")
         
         await status_msg.edit_text(
             f"✅ **Broadcast Complete!**\n\n"
@@ -274,16 +258,14 @@ async def handle_broadcast(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"❌ Failed: {failed}\n"
             f"👥 Total: {total}"
         )
-        
         context.user_data['broadcast_mode'] = False
 
-# ==================== CANCEL COMMAND ====================
+# ==================== CANCEL ====================
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Cancel broadcast mode"""
     context.user_data['broadcast_mode'] = False
     await update.message.reply_text("✅ Cancelled!")
 
-# ==================== BUTTON HANDLERS ====================
+# ==================== BUTTON CALLBACK ====================
 async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -291,25 +273,23 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     data = query.data
     
-    # Admin panel callbacks
+    # Admin Panel - FIXED
     if data == "admin_panel":
-        await admin_panel(update, context)
+        await show_admin_panel(update, context)
         return
     
     if data == "admin_back":
-        await admin_panel(update, context)
+        await show_admin_panel(update, context)
         return
     
-    if data.startswith("admin_"):
+    if data.startswith("admin_") or data == "cancel_broadcast":
         await admin_callback(update, context)
         return
     
-    # Normal user callbacks
+    # Normal User Callbacks
     if data == "proof":
         text = """
 📢 **PROOF CHANNEL** 📢
-
-✅ Hamare real payment proofs:
 
 🔹 Channel: [@your_proof_channel](https://t.me/your_proof_channel)
 🔹 500+ Satisfied Investors
@@ -391,9 +371,6 @@ A: Daily aapke wallet mein
 Q: Withdrawal kaise karein?
 A: Support se contact karein
 
-Q: Kya ye safe hai?
-A: 100% Secure
-
 🔄 /start - Dobara start karein
 """
         await query.edit_message_text(
@@ -403,7 +380,6 @@ A: 100% Secure
         )
     
     elif data == "back":
-        # Wapas main menu
         welcome = f"""
 👋 **Namaste {user.first_name}!** 👋
 
@@ -415,7 +391,6 @@ A: 100% Secure
             [InlineKeyboardButton("📊 Investment Plans", callback_data="plans")],
             [InlineKeyboardButton("❓ Help / FAQ", callback_data="help")]
         ]
-        
         if user.id in ADMIN_IDS:
             keyboard.append([InlineKeyboardButton("⚙️ Admin Panel", callback_data="admin_panel")])
         
@@ -429,7 +404,7 @@ def back_button():
     keyboard = [[InlineKeyboardButton("🔙 Back to Main Menu", callback_data="back")]]
     return InlineKeyboardMarkup(keyboard)
 
-# ==================== HELP COMMAND ====================
+# ==================== HELP ====================
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = """
 📚 **Commands:**
@@ -437,8 +412,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 /start - Main menu
 /help - Help
 /status - Bot status
-
-👇 Buttons use karein:
+/cancel - Cancel broadcast
 """
     keyboard = [
         [InlineKeyboardButton("📢 Proof", callback_data="proof")],
@@ -451,7 +425,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup=InlineKeyboardMarkup(keyboard)
     )
 
-# ==================== STATUS COMMAND ====================
+# ==================== STATUS ====================
 async def status_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     users = load_users()
     text = f"""
@@ -465,7 +439,7 @@ async def status_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 """
     await update.message.reply_text(text, parse_mode='Markdown')
 
-# ==================== ERROR HANDLER ====================
+# ==================== ERROR ====================
 async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logger.error(f"Error: {context.error}")
     if update and update.effective_message:
@@ -481,23 +455,15 @@ def main():
     
     app = Application.builder().token(BOT_TOKEN).build()
     
-    # Commands
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("help", help_command))
     app.add_handler(CommandHandler("status", status_command))
     app.add_handler(CommandHandler("cancel", cancel))
-    
-    # Callback handler for buttons
     app.add_handler(CallbackQueryHandler(button_callback))
-    
-    # Message handler for broadcast
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_broadcast))
-    
-    # Error handler
     app.add_error_handler(error_handler)
     
-    print("✅ Bot is running! Press Ctrl+C to stop.")
-    print(f"👑 Admin Panel ready! Admin IDs: {ADMIN_IDS}")
+    print("✅ Bot is running!")
     app.run_polling(allowed_updates=[])
 
 if __name__ == "__main__":
