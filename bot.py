@@ -5,6 +5,17 @@ from datetime import datetime
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ContextTypes
 
+from admin_handlers import (
+    show_admin_panel,
+    admin_view_users,
+    admin_broadcast,
+    admin_stats,
+    cancel_broadcast,
+    handle_broadcast_message,
+    load_users,
+    count_active_users
+)
+
 # ==================== CONFIG ====================
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 
@@ -15,55 +26,15 @@ if not BOT_TOKEN:
 # 🔑 APNA TELEGRAM USER ID YAHAN DALEIN!
 ADMIN_IDS = [8473800312]  # <-- Apni ID daalein
 
-USERS_FILE = "users.json"
-
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     level=logging.INFO
 )
 logger = logging.getLogger(__name__)
 
-# ==================== USER MANAGEMENT ====================
-def load_users():
-    try:
-        with open(USERS_FILE, 'r') as f:
-            return json.load(f)
-    except:
-        return {}
-
-def save_users(users):
-    with open(USERS_FILE, 'w') as f:
-        json.dump(users, f, indent=2)
-
-def add_user(user_id, username, first_name):
-    users = load_users()
-    if str(user_id) not in users:
-        users[str(user_id)] = {
-            "id": user_id,
-            "username": username,
-            "first_name": first_name,
-            "joined_at": str(datetime.now()),
-            "last_active": str(datetime.now())
-        }
-        save_users(users)
-        return True
-    else:
-        users[str(user_id)]["last_active"] = str(datetime.now())
-        save_users(users)
-        return False
-
-def count_active_users():
-    users = load_users()
-    today = str(datetime.now().date())
-    count = 0
-    for uid, data in users.items():
-        if data.get("last_active", "").startswith(today):
-            count += 1
-    return count
-
 # ==================== WELCOME MESSAGE ====================
 WELCOME_MESSAGE = """
-🚀 **WELCOME TO [YOUR COMPANY NAME]** 🚀
+🚀 **WELCOME TO [SHREE GANESH BAZAR]** 🚀
 
 💰 **Earn Money Online With Us!** 💰
 
@@ -77,7 +48,27 @@ Namaste! 🙏 Aapka swagat hai!
 🔽 **Neeche options mein se choose karein:** 🔽
 """
 
-# ==================== START COMMAND ====================
+# ==================== ADD USER ====================
+def add_user(user_id, username, first_name):
+    users = load_users()
+    if str(user_id) not in users:
+        users[str(user_id)] = {
+            "id": user_id,
+            "username": username,
+            "first_name": first_name,
+            "joined_at": str(datetime.now()),
+            "last_active": str(datetime.now())
+        }
+        with open("users.json", 'w') as f:
+            json.dump(users, f, indent=2)
+        return True
+    else:
+        users[str(user_id)]["last_active"] = str(datetime.now())
+        with open("users.json", 'w') as f:
+            json.dump(users, f, indent=2)
+        return False
+
+# ==================== START ====================
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     add_user(user.id, user.username, user.first_name)
@@ -104,167 +95,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup=InlineKeyboardMarkup(keyboard)
     )
 
-# ==================== ADMIN PANEL (FIXED) ====================
-async def show_admin_panel(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Admin Panel Show Karein - Callback se call hoga"""
-    query = update.callback_query
-    user = update.effective_user
-    
-    if user.id not in ADMIN_IDS:
-        await query.edit_message_text("❌ Aap admin nahi hain!")
-        return
-    
-    users = load_users()
-    total_users = len(users)
-    
-    text = f"""
-⚙️ **ADMIN PANEL** ⚙️
-
-📊 **Statistics:**
-• Total Users: {total_users}
-• Active Today: {count_active_users()}
-• Bot Status: ✅ Online
-
-📌 **Select an option below:**
-"""
-    
-    keyboard = [
-        [InlineKeyboardButton("📊 View All Users", callback_data="admin_users")],
-        [InlineKeyboardButton("📢 Send Broadcast", callback_data="admin_broadcast")],
-        [InlineKeyboardButton("📈 Bot Stats", callback_data="admin_stats")],
-        [InlineKeyboardButton("🔙 Back to Main", callback_data="back")]
-    ]
-    
-    await query.edit_message_text(
-        text,
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup(keyboard)
-    )
-
-# ==================== ADMIN CALLBACKS ====================
-async def admin_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
-    
-    user = update.effective_user
-    
-    if user.id not in ADMIN_IDS:
-        await query.edit_message_text("❌ Aap admin nahi hain!")
-        return
-    
-    data = query.data
-    
-    if data == "admin_users":
-        users = load_users()
-        if not users:
-            text = "📊 **No users found!**"
-        else:
-            text = f"📊 **Total Users:** {len(users)}\n\n"
-            for uid, data in list(users.items())[:10]:
-                text += f"• {data.get('first_name', 'Unknown')} (@{data.get('username', 'N/A')})\n"
-            if len(users) > 10:
-                text += f"\n... aur {len(users) - 10} users aur hain"
-        
-        await query.edit_message_text(
-            text,
-            parse_mode='Markdown',
-            reply_markup=admin_back_button()
-        )
-    
-    elif data == "admin_broadcast":
-        context.user_data['broadcast_mode'] = True
-        await query.edit_message_text(
-            "📢 **Broadcast Mode Activated!**\n\n"
-            "Message likhein jo aap sabhi users ko bhejna chahte hain.\n\n"
-            "⚠️ Ye message **ALL USERS** ko jayega!\n\n"
-            "❌ Cancel karne ke liye /cancel type karein.",
-            parse_mode='Markdown',
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("❌ Cancel", callback_data="cancel_broadcast")]
-            ])
-        )
-    
-    elif data == "cancel_broadcast":
-        context.user_data['broadcast_mode'] = False
-        await query.edit_message_text(
-            "✅ Broadcast cancelled!",
-            reply_markup=admin_back_button()
-        )
-    
-    elif data == "admin_stats":
-        users = load_users()
-        total = len(users)
-        active = count_active_users()
-        
-        text = f"""
-📈 **BOT STATISTICS**
-
-📊 **Users:**
-• Total: {total}
-• Active Today: {active}
-
-📅 **Bot Info:**
-• Status: ✅ Online
-• Started: {datetime.now().strftime('%Y-%m-%d')}
-
-🔧 **System:**
-• Python: 3.10
-• Library: python-telegram-bot
-"""
-        await query.edit_message_text(
-            text,
-            parse_mode='Markdown',
-            reply_markup=admin_back_button()
-        )
-
-def admin_back_button():
-    keyboard = [
-        [InlineKeyboardButton("🔙 Back to Admin Panel", callback_data="admin_back")]
-    ]
-    return InlineKeyboardMarkup(keyboard)
-
-# ==================== BROADCAST ====================
-async def handle_broadcast(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user = update.effective_user
-    
-    if user.id not in ADMIN_IDS:
-        return
-    
-    if context.user_data.get('broadcast_mode'):
-        message_text = update.message.text
-        users = load_users()
-        total = len(users)
-        sent = 0
-        failed = 0
-        
-        status_msg = await update.message.reply_text(
-            f"📢 **Sending broadcast to {total} users...**\nPlease wait ⏳"
-        )
-        
-        for uid, data in users.items():
-            try:
-                await context.bot.send_message(
-                    chat_id=int(uid),
-                    text=f"📢 **Announcement** 📢\n\n{message_text}",
-                    parse_mode='Markdown'
-                )
-                sent += 1
-            except:
-                failed += 1
-        
-        await status_msg.edit_text(
-            f"✅ **Broadcast Complete!**\n\n"
-            f"📤 Sent: {sent}\n"
-            f"❌ Failed: {failed}\n"
-            f"👥 Total: {total}"
-        )
-        context.user_data['broadcast_mode'] = False
-
-# ==================== CANCEL ====================
-async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    context.user_data['broadcast_mode'] = False
-    await update.message.reply_text("✅ Cancelled!")
-
 # ==================== BUTTON CALLBACK ====================
 async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -273,20 +103,40 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     data = query.data
     
-    # Admin Panel - FIXED
+    # ===== ADMIN PANEL CALLBACKS =====
     if data == "admin_panel":
-        await show_admin_panel(update, context)
+        if user.id in ADMIN_IDS:
+            await show_admin_panel(update, context)
+        else:
+            await query.edit_message_text("❌ Aap admin nahi hain!")
         return
     
     if data == "admin_back":
-        await show_admin_panel(update, context)
+        if user.id in ADMIN_IDS:
+            await show_admin_panel(update, context)
         return
     
-    if data.startswith("admin_") or data == "cancel_broadcast":
-        await admin_callback(update, context)
+    if data == "admin_users":
+        if user.id in ADMIN_IDS:
+            await admin_view_users(update, context)
         return
     
-    # Normal User Callbacks
+    if data == "admin_broadcast":
+        if user.id in ADMIN_IDS:
+            await admin_broadcast(update, context)
+        return
+    
+    if data == "admin_stats":
+        if user.id in ADMIN_IDS:
+            await admin_stats(update, context)
+        return
+    
+    if data == "cancel_broadcast":
+        if user.id in ADMIN_IDS:
+            await cancel_broadcast(update, context)
+        return
+    
+    # ===== NORMAL USER CALLBACKS =====
     if data == "proof":
         text = """
 📢 **PROOF CHANNEL** 📢
@@ -439,6 +289,11 @@ async def status_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 """
     await update.message.reply_text(text, parse_mode='Markdown')
 
+# ==================== CANCEL ====================
+async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    context.user_data['broadcast_mode'] = False
+    await update.message.reply_text("✅ Cancelled!")
+
 # ==================== ERROR ====================
 async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logger.error(f"Error: {context.error}")
@@ -460,7 +315,7 @@ def main():
     app.add_handler(CommandHandler("status", status_command))
     app.add_handler(CommandHandler("cancel", cancel))
     app.add_handler(CallbackQueryHandler(button_callback))
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_broadcast))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_broadcast_message))
     app.add_error_handler(error_handler)
     
     print("✅ Bot is running!")
