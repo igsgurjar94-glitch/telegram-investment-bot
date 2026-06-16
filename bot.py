@@ -87,7 +87,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     reply_markup = InlineKeyboardMarkup(keyboard)
     
     # 📸 IMAGE SEND KAREIN PEHLE
-    image_url = "https://example.com/your-image.jpg"  # ⚠️ YAHAN APNI IMAGE URL DALEIN!
+    image_url = "https://postimg.cc/5Hz1fnwV"  # ⚠️ YAHAN APNI IMAGE URL DALEIN!
     
     try:
         await update.message.reply_photo(
