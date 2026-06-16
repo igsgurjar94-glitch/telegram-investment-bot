@@ -2,7 +2,7 @@ import os
 import json
 import logging
 import random
-from datetime import datetime, timedelta
+from datetime import datetime
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ContextTypes
 
@@ -22,21 +22,29 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # ==================== DATA FILES ====================
+# Railway par files create karein
 for file in ["users.json", "withdrawals.json"]:
     if not os.path.exists(file):
         with open(file, 'w') as f:
             json.dump({}, f)
+        print(f"Created {file}")
 
 def load_json(file):
     try:
         with open(file, 'r') as f:
             return json.load(f)
-    except:
+    except Exception as e:
+        print(f"Error loading {file}: {e}")
         return {}
 
 def save_json(file, data):
-    with open(file, 'w') as f:
-        json.dump(data, f, indent=2)
+    try:
+        with open(file, 'w') as f:
+            json.dump(data, f, indent=2)
+        return True
+    except Exception as e:
+        print(f"Error saving {file}: {e}")
+        return False
 
 def get_user(user_id):
     users = load_json("users.json")
@@ -474,12 +482,13 @@ async def admin(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     users = load_json("users.json")
     total = len(users)
+    invested = sum(u.get('invested', 0) for u in users.values())
     
     text = f"""
 ⚙️ ADMIN PANEL
 
 👥 Users: {total}
-💰 Invested: ₹{sum(u.get('invested', 0) for u in users.values())}
+💰 Invested: ₹{invested}
 
 📌 Commands:
 /stats - Stats
@@ -510,8 +519,12 @@ async def admin_users(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     users = load_json("users.json")
     text = f"📊 USERS ({len(users)})\n\n"
-    for uid, data in list(users.items())[:10]:
-        text += f"• {data.get('first_name')} | ₹{data.get('balance')}\n"
+    count = 0
+    for uid, data in users.items():
+        count += 1
+        text += f"{count}. {data.get('first_name')} | ₹{data.get('balance')}\n"
+        if count >= 20:
+            break
     
     await query.edit_message_text(text, reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Back", callback_data="admin")]]))
 
@@ -612,9 +625,4 @@ async def stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     
     users = load_json("users.json")
-    await update.message.reply_text(f"📊 Users: {len(users)}\n💰 Invested: ₹{sum(u.get('invested', 0) for u in users.values())}")
-
-async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("/start - Main Menu\n/invest - Invest\n/withdraw - Withdraw")
-
-# ==================== ERROR HANDLER ====================
+    text = f"📊 Users: {le
